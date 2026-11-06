@@ -1,0 +1,11 @@
+name: Correção por rubrica
+description: Um modelo dá uma nota seguindo critérios escritos por você.
+kind: llm_judge
+threshold: 0.7
+judge_provider: ollama
+judge_model: lfm3-omni
+rubric: |-
+  Dê uma nota de 0 a 1 para a resposta.
+  1 = correta, completa e sem invenções.
+  0 = errada ou fora do assunto.
+  Penalize afirmações que não estejam no input.

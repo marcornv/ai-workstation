@@ -1,0 +1,7 @@
+name: Fidelidade
+description: Mede se cada afirmação da resposta é sustentada pelo texto de entrada. Detecta invenções.
+kind: ragas
+metric: faithfulness
+threshold: 0.7
+judge_provider: anthropic
+judge_model: claude-sonnet-5-5

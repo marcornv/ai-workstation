@@ -1,0 +1,14 @@
+.git
+.env
+bancada
+bancada.exe
+bancada-data
+frontend/node_modules
+backend/web/dist
+evaluator
+data/bancada.db*
+data/images
+**/*.tmp
+.github
+**/node_modules
+**/*.tsbuildinfo

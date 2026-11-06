@@ -1,0 +1,57 @@
+# Bancada with Docker: no need to install Go, Node, Python or Ollama.
+#
+#   docker compose up -d        start (first time builds the images; takes a few minutes)
+#   open http://localhost:8080
+#   docker compose down         stop (your data stays in ./bancada-data)
+#
+# Where data lives:
+#   ./bancada-data/   your workspace: bancada.yaml, experiments/, evaluators/,
+#                     data/ (datasets, images, results database) and .env (API keys).
+#                     It's a normal folder: back it up, edit files, put it in Git.
+#   ollama-models     Docker volume with downloaded Ollama models (they are large).
+
+services:
+  bancada:
+    build: .
+    image: bancada-app
+    restart: unless-stopped
+    ports:
+      # Only reachable from this computer. Remove "127.0.0.1:" to share on your network
+      # (anyone who can open the page can then spend your API credits).
+      - "127.0.0.1:8080:8080"
+    environment:
+      # Used only when bancada.yaml is created for the first time.
+      BANCADA_EVALUATOR_URL: http://evaluator:8001
+      BANCADA_OLLAMA_URL: http://ollama:11434
+      # Owner of the files in ./bancada-data (run "id -u" and "id -g" if yours isn't 1000).
+      BANCADA_UID: ${BANCADA_UID:-1000}
+      BANCADA_GID: ${BANCADA_GID:-1000}
+    volumes:
+      - ./bancada-data:/workspace
+    depends_on:
+      - evaluator
+      - ollama
+
+  evaluator:
+    build: ./evaluator
+    image: bancada-evaluator
+    restart: unless-stopped
+    # No "ports": only the bancada container talks to it.
+
+  ollama:
+    image: ollama/ollama:0.40.13
+    restart: unless-stopped
+    volumes:
+      - ollama-models:/root/.ollama
+    # Using an NVIDIA GPU makes local models much faster. Requires the NVIDIA
+    # Container Toolkit; then uncomment:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+volumes:
+  ollama-models:

@@ -1,0 +1,5 @@
+name: Contém a resposta esperada
+description: Nota 1 se a resposta contiver o texto da coluna de resposta esperada.
+kind: rule
+metric: contains
+threshold: 1

@@ -14,6 +14,7 @@ Uma bancada de testes para modelos de linguagem, feita para quem não programa. 
   - **modelos de decisão** (Laya, JEV), que respondem com probabilidades.
 - **Testar avaliadores com uma planilha:** compara as notas do avaliador com o seu veredito e sugere o melhor limiar.
 - **Tudo em arquivos YAML** editáveis pela interface ou à mão, prontos para versionar.
+- **Português ou inglês:** troque o idioma no canto da barra lateral ou em **Configurações** (*English version available: pick "English" in the sidebar or in Settings*).
 
 ## Como abrir com Docker (mais fácil)
 
@@ -123,6 +124,12 @@ Com Docker, tudo isso fica dentro de `bancada-data/`.
 
 Os arquivos são a fonte da verdade. A interface lê o disco a cada carregamento e grava nele a cada mudança, então você pode editar por qualquer um dos dois caminhos.
 
+## Idioma / Language
+
+A interface, as mensagens de erro e os motivos dos avaliadores existem em português e inglês. Troque pelo seletor na barra lateral ou em **Configurações › Idioma**. A escolha fica no `bancada.yaml` (`language: pt-BR` ou `language: en`). Notas e motivos já calculados ficam no idioma em que foram gerados.
+
+*The interface, error messages and evaluator reasons are available in Portuguese and English. Switch with the selector in the sidebar or in Settings › Language. The choice is saved in `bancada.yaml` (`language: en`).*
+
 ## Segurança
 
 - O Bancada só aceita conexões do seu próprio computador (127.0.0.1).
@@ -149,7 +156,13 @@ docker/       container entrypoint
 
 The Go binary starts the Python service as a child process when `evaluator/.venv` exists, and stops it on exit. Without Python, everything except Python-based evaluation keeps working.
 
-Code and comments are in English; everything the user sees is in Portuguese (pt-BR).
+Code and comments are in English. Everything the user sees exists in Portuguese (pt-BR) and English, written in place with both versions side by side:
+
+- frontend: `t("Salvar", "Save")` (`frontend/src/i18n.ts`);
+- Go: `tr("arquivo não encontrado", "file not found")` (`backend/i18n.go`);
+- Python: `tr(...)` (`evaluator/i18n.py`).
+
+The language comes from `bancada.yaml → language`. The Go server writes it into the page as `<html lang="...">`, so the frontend knows it before rendering. Go passes it to the Python service with each request. Changing it reloads the page.
 
 ### Backend files
 
@@ -158,6 +171,7 @@ The backend is one Go package with one file per topic. There are no layers: hand
 | File | What it does |
 |---|---|
 | `main.go` | startup: config, database, evaluator process, HTTP server |
+| `i18n.go` | the language setting and `tr(pt, en)` |
 | `server.go` | every HTTP route and handler |
 | `config.go` | YAML structs and load/save for `bancada.yaml`, experiments, evaluators |
 | `keys.go` | API keys via env vars and the local `.env` file |
@@ -175,6 +189,7 @@ The backend is one Go package with one file per topic. There are no layers: hand
 - `main.py`: the FastAPI endpoint.
 - `metrics.py`: each metric as a function.
 - `llm.py`: minimal judge and embedding clients.
+- `i18n.py`: the request's language and `tr(pt, en)`.
 
 The three Ragas metrics (faithfulness, answer relevancy, context precision) follow the Ragas method but are implemented directly in `metrics.py`. That avoids Ragas/LangChain version churn and lets them work with any judge model.
 

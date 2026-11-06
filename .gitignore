@@ -1,0 +1,25 @@
+# Secrets (API keys typed in the UI)
+.env
+
+# Local data: generated config, results database, Docker workspace
+bancada.yaml
+data/bancada.db*
+bancada-data/
+
+# Build outputs
+/bancada
+/bancada.exe
+backend/bancada
+backend/bancada.exe
+backend/web/dist/
+frontend/node_modules/
+*.tsbuildinfo
+
+# Python
+evaluator/.venv/
+__pycache__/
+.pytest_cache/
+
+# Misc
+*.tmp
+.DS_Store

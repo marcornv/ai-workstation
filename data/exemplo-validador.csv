@@ -1,0 +1,11 @@
+pergunta,resposta,resposta_esperada,correta
+Qual é a capital do Brasil?,A capital do Brasil é Brasília.,Brasília,sim
+Qual é a capital do Brasil?,A capital do Brasil é São Paulo.,Brasília,não
+Em que ano foi proclamada a independência do Brasil?,Em 1822.,1822,sim
+Em que ano foi proclamada a independência do Brasil?,A independência foi em 1889.,1822,não
+Qual é o maior planeta do Sistema Solar?,Júpiter é o maior planeta do Sistema Solar.,Júpiter,sim
+Qual é o maior planeta do Sistema Solar?,O maior planeta é Saturno.,Júpiter,não
+Quantos lados tem um hexágono?,Um hexágono tem seis lados.,6,sim
+Quantos lados tem um hexágono?,Tem oito lados.,6,não
+Qual é a fórmula química da água?,H2O.,H2O,sim
+Qual é a fórmula química da água?,A fórmula da água é CO2.,H2O,não

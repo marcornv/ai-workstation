@@ -1,0 +1,23 @@
+name: Exemplo - perguntas gerais
+description: Perguntas simples para testar a configuração
+use_case: free
+models:
+  - model: lfm3-omni:latest
+    provider: ollama
+    enabled: true
+  - model: lfm3:1.7B
+    provider: ollama
+    enabled: true
+prompt:
+  system: Responda em português, em uma frase curta.
+  user: '{pergunta}'
+dataset:
+  file: exemplo-perguntas.csv
+  reference_column: resposta_esperada
+run:
+  repetitions: 1
+  concurrency: 2
+  timeout_s: 120
+evaluators:
+  - contem-a-resposta
+  - correcao-por-rubrica
