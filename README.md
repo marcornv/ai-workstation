@@ -1,5 +1,7 @@
 # Bancada
 
+*[Read in English](README.en.md)*
+
 Uma bancada de testes para modelos de linguagem, feita para quem não programa. Rode os mesmos dados em vários modelos (OpenAI, Claude, Gemini, Ollama…), compare tokens, latência e custo, e avalie a qualidade das respostas. Tudo por uma interface web local.
 
 **O que dá para fazer:**
@@ -14,7 +16,77 @@ Uma bancada de testes para modelos de linguagem, feita para quem não programa. 
   - **modelos de decisão** (Laya, JEV), que respondem com probabilidades.
 - **Testar avaliadores com uma planilha:** compara as notas do avaliador com o seu veredito e sugere o melhor limiar.
 - **Tudo em arquivos YAML** editáveis pela interface ou à mão, prontos para versionar.
-- **Português ou inglês:** troque o idioma no canto da barra lateral ou em **Configurações** (*English version available: pick "English" in the sidebar or in Settings*).
+- **Português ou inglês:** troque o idioma no canto da barra lateral ou em **Configurações**.
+
+## Passo a passo para quem nunca programou
+
+Não precisa saber programar. Você vai instalar um programa (o Docker Desktop), baixar o Bancada e digitar **um único comando**. Separe uns 20 minutos para a primeira vez e deixe pelo menos **10 GB livres** no disco.
+
+### 1. Instale o Docker Desktop
+
+O Docker Desktop é o programa que roda o Bancada para você, sem precisar instalar mais nada.
+
+1. Entre em https://www.docker.com/products/docker-desktop/ e clique em **Download** para o seu sistema (Windows, Mac ou Linux).
+   - **Mac:** escolha *Apple Silicon* se o seu Mac for de 2021 em diante (chip M1, M2, M3…), ou *Intel* se for mais antigo. Na dúvida: menu  › **Sobre Este Mac** mostra o chip.
+2. Abra o arquivo baixado e siga o instalador, aceitando as opções padrão.
+   - **Windows:** se ele pedir para instalar ou atualizar o "WSL", aceite. Talvez seja preciso reiniciar o computador.
+3. Abra o **Docker Desktop** (pelo menu Iniciar no Windows, ou pela pasta Aplicativos no Mac). Aceite os termos. Não precisa criar conta: dá para pular o login.
+4. Espere até aparecer **"Engine running"** (ou a baleia na barra de tarefas ficar parada). Deixe o Docker Desktop aberto.
+
+### 2. Baixe o Bancada
+
+1. Abra a página do projeto no GitHub: https://github.com/marcornv/ai-workstation
+2. Clique no botão verde **Code** e depois em **Download ZIP**.
+3. Descompacte o arquivo baixado:
+   - **Windows:** clique com o botão direito no `.zip` › **Extrair tudo…** › **Extrair**.
+   - **Mac:** dê dois cliques no `.zip`.
+4. Mova a pasta descompactada para um lugar fácil de achar, como **Documentos**. Dentro dela você deve ver arquivos como `README.md` e `docker-compose.yml`.
+
+### 3. Abra o terminal dentro da pasta do Bancada
+
+O terminal é uma janela onde você digita comandos. Você só vai usar ele por um instante.
+
+- **Windows:** abra a pasta do Bancada no Explorador de Arquivos. Clique na barra de endereço lá em cima (onde aparece o caminho da pasta), apague o que estiver escrito, digite `cmd` e aperte **Enter**. Uma janela preta vai abrir, já na pasta certa.
+- **Mac:** abra o **Terminal** (aperte `Cmd + Espaço`, digite `Terminal` e aperte Enter). Digite `cd ` (com um espaço no final, sem apertar Enter), **arraste a pasta do Bancada** do Finder para dentro da janela do Terminal e aperte **Enter**.
+- **Linux:** clique com o botão direito dentro da pasta e escolha **Abrir no terminal**.
+
+### 4. Ligue o Bancada
+
+No terminal, digite (ou copie e cole) o comando abaixo e aperte **Enter**:
+
+```
+docker compose up -d
+```
+
+Na primeira vez, o Docker baixa e prepara tudo. Isso leva de **5 a 15 minutos**, dependendo da sua internet; vão aparecer várias linhas de texto. Está pronto quando as linhas pararem e aparecer algo como `Started` ou `Running` para `bancada`, `evaluator` e `ollama`.
+
+### 5. Abra no navegador
+
+Abra o Chrome, Firefox, Edge ou Safari e entre em **http://localhost:8080**. Pronto! Agora siga o [Primeiro experimento](#primeiro-experimento).
+
+Você já pode fechar o terminal. O Bancada continua funcionando enquanto o Docker Desktop estiver aberto.
+
+### Nas próximas vezes
+
+- **Para usar de novo:** abra o Docker Desktop, espere ele ligar e entre em http://localhost:8080. O Bancada liga sozinho junto com o Docker, sem precisar digitar o comando de novo.
+- **Para desligar:** no Docker Desktop, vá em **Containers** e clique no botão de parar (■) ao lado de `bancada`. Ou simplesmente feche o Docker Desktop.
+- **Para ligar depois de desligar pelo botão:** clique em ▶ no mesmo lugar, ou repita os passos 3 e 4.
+- **Seus experimentos e resultados** ficam na pasta `bancada-data`, dentro da pasta do Bancada. Não apague essa pasta.
+
+### Se algo der errado
+
+| O que aparece | O que fazer |
+|---|---|
+| `'docker' não é reconhecido…` ou `command not found: docker` | O Docker Desktop não está instalado ou ainda não terminou de instalar. Instale (passo 1), feche o terminal e abra de novo. |
+| `Cannot connect to the Docker daemon` ou `error during connect` | O Docker Desktop está fechado ou ainda ligando. Abra ele, espere aparecer "Engine running" e rode o comando de novo. |
+| `no configuration file provided: not found` | O terminal não está na pasta do Bancada. Refaça o passo 3, garantindo que é a pasta que tem o `docker-compose.yml`. |
+| `port is already allocated` | Outro programa está usando a porta 8080. Feche-o ou reinicie o computador e tente de novo. |
+| A página não abre no navegador | Espere mais um minuto e recarregue. Confira no Docker Desktop, em **Containers**, se o `bancada` está ligado (bolinha verde). |
+| Ficou sem espaço no disco | Os modelos locais do Ollama são grandes. Para apagar todos, rode `docker compose down -v` na pasta do Bancada (seus experimentos em `bancada-data` continuam guardados) e depois `docker compose up -d`. |
+
+### Para atualizar o Bancada
+
+Baixe o ZIP novo (passo 2), copie a sua pasta `bancada-data` antiga para dentro da pasta nova e rode `docker compose up -d --build` dentro da pasta nova (passos 3 e 4).
 
 ## Como abrir com Docker (mais fácil)
 
@@ -90,7 +162,7 @@ Você não precisa rodar um experimento para saber se um avaliador é bom. Em **
 
 1. Escolha ou envie um CSV/JSONL com as respostas a julgar (veja o exemplo `data/exemplo-validador.csv`).
 2. Indique as colunas. A resposta é obrigatória; o resto é opcional: input, resposta esperada, contexto, imagens e **o seu veredito** (sim/não, 1/0, aprovado/reprovado ou uma nota de 0 a 1).
-3. Clique em **Rodar avaliador**.
+3. Clique em **Rodar teste**.
 
 Com uma coluna de veredito, o Bancada mostra:
 - quanto o avaliador concorda com você;
