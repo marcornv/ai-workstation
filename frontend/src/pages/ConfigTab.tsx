@@ -402,7 +402,7 @@ function InputsSection({ exp, update }: { exp: Experiment; update: (e: Experimen
                 value={exp.dataset.reference_column}
                 onChange={(e) => update({ ...exp, dataset: { ...exp.dataset, reference_column: e.target.value } })}
               >
-                <option value="">— nenhuma —</option>
+                <option value="">{t("— nenhuma —", "— none —")}</option>
                 {columns.map((c) => (
                   <option key={c}>{c}</option>
                 ))}
@@ -417,7 +417,7 @@ function InputsSection({ exp, update }: { exp: Experiment; update: (e: Experimen
                 value={exp.dataset.context_column}
                 onChange={(e) => update({ ...exp, dataset: { ...exp.dataset, context_column: e.target.value } })}
               >
-                <option value="">— nenhuma —</option>
+                <option value="">{t("— nenhuma —", "— none —")}</option>
                 {columns.map((c) => (
                   <option key={c}>{c}</option>
                 ))}

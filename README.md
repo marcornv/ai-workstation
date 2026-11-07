@@ -18,6 +18,49 @@ Uma bancada de testes para modelos de linguagem, feita para quem não programa. 
 - **Tudo em arquivos YAML** editáveis pela interface ou à mão, prontos para versionar.
 - **Português ou inglês:** troque o idioma no canto da barra lateral ou em **Configurações**.
 
+## Telas
+
+**Resultados:** respostas lado a lado, tokens, latência e custo de cada modelo.
+
+![Aba Resultados comparando três modelos](docs/screenshots/pt/04-results.png)
+
+**Avaliação:** a nota de cada modelo em cada avaliador.
+
+![Aba Avaliação com a tabela de notas por modelo e avaliador](docs/screenshots/pt/05-evaluation.png)
+
+**Testar um avaliador com uma planilha:** quanto ele concorda com você e qual limiar funciona melhor.
+
+![Teste de avaliador com planilha, mostrando concordância e melhor limiar](docs/screenshots/pt/08-evaluator-spreadsheet-test.png)
+
+<details>
+<summary>Mais telas</summary>
+
+**Lista de experimentos**
+
+![Lista de experimentos](docs/screenshots/pt/01-experiments.png)
+
+**Configuração do experimento:** modelos, prompt e dados.
+
+![Aba Configuração do experimento](docs/screenshots/pt/02-experiment-setup.png)
+
+**Custo estimado antes de rodar**
+
+![Janela Rodar experimento com o custo estimado](docs/screenshots/pt/03-cost-estimate.png)
+
+**O experimento como arquivo YAML**
+
+![Aba Arquivo com o YAML do experimento](docs/screenshots/pt/06-experiment-yaml.png)
+
+**Motor de decisão, com teste rápido de um exemplo**
+
+![Avaliador do tipo Motor de decisão](docs/screenshots/pt/07-decision-evaluator.png)
+
+**Configurações:** provedores, chaves e modelos do Ollama.
+
+![Página de Configurações](docs/screenshots/pt/09-settings.png)
+
+</details>
+
 ## Passo a passo para quem nunca programou
 
 Não precisa saber programar. Você vai instalar um programa (o Docker Desktop), baixar o Bancada e digitar **um único comando**. Separe uns 20 minutos para a primeira vez e deixe pelo menos **10 GB livres** no disco.
