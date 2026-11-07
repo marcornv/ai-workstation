@@ -18,6 +18,49 @@ A test bench for language models, made for people who don't code. Run the same d
 - **Everything in YAML files**, editable from the interface or by hand, ready to version.
 - **Portuguese or English:** switch the language in the corner of the sidebar or in **Settings**.
 
+## Screenshots
+
+**Results:** answers side by side, with tokens, latency and cost for each model.
+
+![Results tab comparing three models](docs/screenshots/en/04-results.png)
+
+**Evaluation:** each model's score on each evaluator.
+
+![Evaluation tab with the score table by model and evaluator](docs/screenshots/en/05-evaluation.png)
+
+**Testing an evaluator with a spreadsheet:** how often it agrees with you and which threshold works best.
+
+![Evaluator spreadsheet test showing agreement and best threshold](docs/screenshots/en/08-evaluator-spreadsheet-test.png)
+
+<details>
+<summary>More screenshots</summary>
+
+**Experiment list**
+
+![Experiment list](docs/screenshots/en/01-experiments.png)
+
+**Experiment setup:** models, prompt and data.
+
+![Experiment Setup tab](docs/screenshots/en/02-experiment-setup.png)
+
+**Estimated cost before running**
+
+![Run experiment dialog with the cost estimate](docs/screenshots/en/03-cost-estimate.png)
+
+**The experiment as a YAML file**
+
+![File tab with the experiment YAML](docs/screenshots/en/06-experiment-yaml.png)
+
+**Decision engine, with a quick test on one example**
+
+![Decision engine evaluator](docs/screenshots/en/07-decision-evaluator.png)
+
+**Settings:** providers, keys and Ollama models.
+
+![Settings page](docs/screenshots/en/09-settings.png)
+
+</details>
+
 ## Step by step for people who have never coded
 
 You don't need to know how to code. You'll install one program (Docker Desktop), download Bancada and type **a single command**. Set aside about 20 minutes the first time and keep at least **10 GB free** on your disk.
