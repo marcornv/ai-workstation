@@ -53,6 +53,7 @@ func (a *App) routes() http.Handler {
 	mux.HandleFunc("PUT /api/experiments/{id}", a.handlePutExperiment)
 	mux.HandleFunc("DELETE /api/experiments/{id}", a.handleDeleteExperiment)
 	mux.HandleFunc("GET /api/experiments/{id}/file", a.handleGetExperimentFile)
+	mux.HandleFunc("GET /api/experiments/{id}/data", a.handleExperimentData)
 	mux.HandleFunc("PUT /api/experiments/{id}/file", a.handlePutExperimentFile)
 	mux.HandleFunc("POST /api/experiments/{id}/estimate", a.handleEstimate)
 	mux.HandleFunc("GET /api/experiments/{id}/runs", a.handleListRuns)
@@ -69,6 +70,8 @@ func (a *App) routes() http.Handler {
 	mux.HandleFunc("POST /api/datasets", a.handleUploadDataset)
 	mux.HandleFunc("POST /api/datasets/images", a.handleUploadImages)
 	mux.HandleFunc("GET /api/datasets/{file}", a.handlePreviewDataset)
+	mux.HandleFunc("PUT /api/datasets/{file}/column", a.handleSetDatasetColumn)
+	mux.HandleFunc("DELETE /api/datasets/{file}", a.handleDeleteDataset)
 	mux.HandleFunc("GET /api/files/{path...}", a.handleDataFile)
 
 	mux.HandleFunc("GET /api/evaluators", a.handleListEvaluators)
@@ -492,7 +495,17 @@ func (a *App) handleCreateExperiment(w http.ResponseWriter, r *http.Request) {
 	} else {
 		exp = Experiment{Prompt: Prompt{User: "{input}"}, Run: cfg.Defaults.Run}
 	}
-	exp.ID = uniqueID(cfg.Paths.Experiments, slugify(body.Name))
+	exp.ID = newExperimentID(cfg, slugify(body.Name))
+	if body.DuplicateFrom != "" {
+		// The copy gets its own copy of the original's data folder.
+		if err := copyExperimentData(cfg, body.DuplicateFrom, exp.ID); err != nil {
+			writeError(w, http.StatusInternalServerError, tr("não foi possível copiar os dados: ", "could not copy the data: ")+err.Error())
+			return
+		}
+		if datasetOwner(exp.Dataset.File) == body.DuplicateFrom {
+			exp.Dataset.File = exp.ID + "/" + strings.TrimPrefix(exp.Dataset.File, body.DuplicateFrom+"/")
+		}
+	}
 	exp.Name = strings.TrimSpace(body.Name)
 	exp.Description = body.Description
 	if body.UseCase != "" {
@@ -562,7 +575,28 @@ func (a *App) handleDeleteExperiment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	deleteRunsOfExperiment(a.db, exp.ID)
+	if err := deleteExperimentData(cfg, exp.ID); err != nil {
+		writeError(w, http.StatusInternalServerError, tr("o experimento foi excluído, mas não sua pasta de dados: ", "the experiment was deleted, but not its data folder: ")+err.Error())
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// handleExperimentData says what the experiment's data folder holds, so the UI
+// can warn before deleting it.
+func (a *App) handleExperimentData(w http.ResponseWriter, r *http.Request) {
+	cfg, ok := mustConfig(w)
+	if !ok {
+		return
+	}
+	exp, ok := a.mustExperiment(w, r, cfg)
+	if !ok {
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"folder": filepath.ToSlash(experimentDataDir(cfg, exp.ID)),
+		"usage":  experimentDataUsage(cfg, exp.ID),
+	})
 }
 
 func (a *App) handleGetExperimentFile(w http.ResponseWriter, r *http.Request) {
@@ -879,15 +913,9 @@ func (a *App) handleListDatasets(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	files := []string{}
-	for _, pattern := range []string{"*.csv", "*.jsonl", "*.ndjson"} {
-		matches, _ := filepath.Glob(filepath.Join(cfg.Paths.Datasets, pattern))
-		for _, m := range matches {
-			files = append(files, filepath.Base(m))
-		}
-	}
-	sort.Strings(files)
-	writeJSON(w, http.StatusOK, files)
+	// ?experiment=<id>: that experiment's files first, then the shared ones.
+	// Without it: shared files plus every experiment's files.
+	writeJSON(w, http.StatusOK, listDatasetFiles(cfg, r.URL.Query().Get("experiment")))
 }
 
 // handleUploadDataset accepts either a multipart file ("file") or JSON
@@ -938,19 +966,25 @@ func (a *App) handleUploadDataset(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	// ?experiment=<id> saves into that experiment's folder; otherwise data/ (shared).
+	dir, prefix, err := uploadDir(cfg, r.URL.Query().Get("experiment"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 	// Never overwrite an existing dataset: old runs may depend on it.
 	file := base + ext
 	for i := 2; ; i++ {
-		if _, err := os.Stat(filepath.Join(cfg.Paths.Datasets, file)); errors.Is(err, os.ErrNotExist) {
+		if _, err := os.Stat(filepath.Join(dir, file)); errors.Is(err, os.ErrNotExist) {
 			break
 		}
 		file = fmt.Sprintf("%s-%d%s", base, i, ext)
 	}
-	if err := writeFileAtomic(filepath.Join(cfg.Paths.Datasets, file), data, 0o644); err != nil {
+	if err := writeFileAtomic(filepath.Join(dir, file), data, 0o644); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusCreated, map[string]string{"file": file})
+	writeJSON(w, http.StatusCreated, map[string]string{"file": prefix + file})
 }
 
 func (a *App) handlePreviewDataset(w http.ResponseWriter, r *http.Request) {
@@ -977,6 +1011,71 @@ func (a *App) handlePreviewDataset(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// handleSetDatasetColumn fills one column of a JSONL dataset with the given
+// values, one per row. Used to label uploaded images (e.g. an expected answer
+// per image). Only JSONL: rewriting a CSV could change its separator or quoting.
+// Runs keep their own copy of each row's reference, so editing a label doesn't
+// change results that were already saved.
+func (a *App) handleSetDatasetColumn(w http.ResponseWriter, r *http.Request) {
+	cfg, ok := mustConfig(w)
+	if !ok {
+		return
+	}
+	file := r.PathValue("file")
+	if ext := strings.ToLower(filepath.Ext(file)); ext != ".jsonl" && ext != ".ndjson" {
+		writeError(w, http.StatusBadRequest, tr("só é possível editar arquivos JSONL", "only JSONL files can be edited"))
+		return
+	}
+	var body struct {
+		Column string   `json:"column"`
+		Values []string `json:"values"`
+	}
+	if err := readJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	body.Column = strings.TrimSpace(body.Column)
+	if body.Column == "" {
+		writeError(w, http.StatusBadRequest, tr("dê um nome para a coluna", "give the column a name"))
+		return
+	}
+	path, err := datasetPath(cfg, file)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf(tr("não foi possível ler %s: %v", "could not read %s: %v"), file, err))
+		return
+	}
+	updated, err := setJSONLColumn(data, body.Column, body.Values)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err := writeFileAtomic(path, updated, 0o644); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"file": file, "column": body.Column, "count": len(body.Values)})
+}
+
+// handleDeleteDataset deletes a file from an experiment's own folder (and the
+// images uploaded with it). Shared files in data/ are never deleted here.
+// Runs keep their own copy of inputs and answers, so old results stay.
+func (a *App) handleDeleteDataset(w http.ResponseWriter, r *http.Request) {
+	cfg, ok := mustConfig(w)
+	if !ok {
+		return
+	}
+	if err := deleteExperimentDataset(cfg, r.PathValue("file")); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
 // guessImageColumns returns the columns whose values (in the first rows) are all
 // images that exist (or URLs), so the UI can pre-select them. A column with
 // just file names, like "foto.jpg", doesn't count unless that file is in data/.
@@ -1000,8 +1099,9 @@ func guessImageColumns(cfg Config, ds Dataset) []string {
 	return guess
 }
 
-// handleUploadImages saves several images into data/images/<name>/ and creates
-// a dataset <name>.jsonl with one row per image (columns "imagem" and "arquivo").
+// handleUploadImages saves several images into <dir>/images/<name>/ and creates
+// a dataset <dir>/<name>.jsonl with one row per image (columns "imagem" and
+// "arquivo"). <dir> is data/<experiment id> with ?experiment=<id>, else data/.
 func (a *App) handleUploadImages(w http.ResponseWriter, r *http.Request) {
 	cfg, ok := mustConfig(w)
 	if !ok {
@@ -1018,18 +1118,23 @@ func (a *App) handleUploadImages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	dir, prefix, err := uploadDir(cfg, r.URL.Query().Get("experiment"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 	// The dataset file and the image folder share a unique name.
 	base := slugify(r.FormValue("name"))
 	name := base
 	for i := 2; ; i++ {
-		_, errFile := os.Stat(filepath.Join(cfg.Paths.Datasets, name+".jsonl"))
-		_, errDir := os.Stat(filepath.Join(cfg.Paths.Datasets, "images", name))
+		_, errFile := os.Stat(filepath.Join(dir, name+".jsonl"))
+		_, errDir := os.Stat(filepath.Join(dir, "images", name))
 		if errors.Is(errFile, os.ErrNotExist) && errors.Is(errDir, os.ErrNotExist) {
 			break
 		}
 		name = fmt.Sprintf("%s-%d", base, i)
 	}
-	folder := filepath.Join(cfg.Paths.Datasets, "images", name)
+	folder := filepath.Join(dir, "images", name)
 	if err := os.MkdirAll(folder, 0o755); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -1071,17 +1176,16 @@ func (a *App) handleUploadImages(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		line, _ := json.Marshal(map[string]string{
-			"imagem":  "images/" + name + "/" + fileName, // relative to the datasets folder
+			"imagem":  prefix + "images/" + name + "/" + fileName, // relative to the datasets folder
 			"arquivo": header.Filename,
 		})
 		lines = append(append(lines, line...), '\n')
 	}
-	file := name + ".jsonl"
-	if err := writeFileAtomic(filepath.Join(cfg.Paths.Datasets, file), lines, 0o644); err != nil {
+	if err := writeFileAtomic(filepath.Join(dir, name+".jsonl"), lines, 0o644); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusCreated, map[string]any{"file": file, "image_columns": []string{"imagem"}, "count": len(files)})
+	writeJSON(w, http.StatusCreated, map[string]any{"file": prefix + name + ".jsonl", "image_columns": []string{"imagem"}, "count": len(files)})
 }
 
 // handleDataFile serves an image from the datasets folder, so the UI can show

@@ -32,6 +32,11 @@ class Item(BaseModel):
     context: str = ""  # retrieved context (or the prompt itself)
 
 
+class Image(BaseModel):
+    media_type: str  # e.g. "image/png"
+    data: str  # base64
+
+
 class Endpoint(BaseModel):
     kind: str
     model: str
@@ -45,6 +50,8 @@ class EvaluateRequest(BaseModel):
     item: Item
     judge: Optional[Endpoint] = None
     embedding: Optional[Endpoint] = None
+    # Images of the input, sent only for an LLM judge with "send images" on.
+    images: list[Image] = []
 
 
 class EvaluateResponse(BaseModel):
@@ -83,7 +90,7 @@ def run_metric(req: EvaluateRequest) -> tuple[float, str]:
         return metrics.embedding_similarity(embedder, item)
     if ev.kind == "llm_judge":
         require(judge, tr("modelo juiz", "judge model"))
-        return metrics.llm_judge(judge, item, ev.rubric)
+        return metrics.llm_judge(judge, item, ev.rubric, [img.model_dump() for img in req.images])
     if ev.kind == "ragas":
         require(judge, tr("modelo juiz", "judge model"))
         if ev.metric == "faithfulness":

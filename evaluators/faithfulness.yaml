@@ -1,0 +1,7 @@
+name: Faithfulness
+description: Checks that every claim in the answer is supported by the input text. Catches made-up content.
+kind: ragas
+metric: faithfulness
+threshold: 0.7
+judge_provider: anthropic
+judge_model: claude-sonnet-5-5

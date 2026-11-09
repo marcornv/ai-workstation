@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, imageURL, type Experiment, type ModelConfig, type ProviderView } from "../api";
+import { api, datasetOwner, imageURL, type Experiment, type ModelConfig, type ProviderView } from "../api";
 import { Dialog } from "../components/Dialog";
 import { useToast } from "../components/Toast";
 import { fmtCompact, fmtInt, fmtUSD, modelPlaceholder, providerKindLabel, providerTag } from "../format";
@@ -276,12 +276,15 @@ function InputsSection({ exp, update }: { exp: Experiment; update: (e: Experimen
   const toast = useToast();
   const fileInput = useRef<HTMLInputElement>(null);
   const imageInput = useRef<HTMLInputElement>(null);
-  const datasets = useLoad(() => api.datasets(), []);
+  const datasets = useLoad(() => api.datasets(exp.id), [exp.id]);
   const preview = useLoad(
     () => (exp.dataset.file ? api.previewDataset(exp.dataset.file, 5) : Promise.resolve(null)),
     [exp.dataset.file],
   );
   const [pasting, setPasting] = useState(false);
+  // Image columns of the dataset being labeled; null = dialog closed.
+  const [labeling, setLabeling] = useState<string[] | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Switching files resets the column mapping. Columns that look like images
   // (e.g. "images/a.png") are pre-selected as image columns.
@@ -296,9 +299,21 @@ function InputsSection({ exp, update }: { exp: Experiment; update: (e: Experimen
 
   async function uploadImages(files: FileList) {
     try {
-      const res = await api.uploadImages("imagens", files);
+      const res = await api.uploadImages("imagens", files, exp.id);
       toast(t(`${res.count} imagem(ns) salvas. Dados em data/${res.file}`, `${res.count} image(s) saved. Data in data/${res.file}`));
-      chooseFile(res.file);
+      await chooseFile(res.file);
+      setLabeling(res.image_columns);
+    } catch (e) {
+      toast((e as Error).message, "err");
+    }
+  }
+
+  async function deleteFile() {
+    try {
+      await api.deleteDataset(exp.dataset.file);
+      toast(t(`Arquivo data/${exp.dataset.file} excluído.`, `File data/${exp.dataset.file} deleted.`));
+      setDeleting(false);
+      chooseFile("");
     } catch (e) {
       toast((e as Error).message, "err");
     }
@@ -312,7 +327,7 @@ function InputsSection({ exp, update }: { exp: Experiment; update: (e: Experimen
 
   async function upload(file: File) {
     try {
-      const res = await api.uploadDataset(file);
+      const res = await api.uploadDataset(file, exp.id);
       toast(t(`Arquivo salvo como data/${res.file}`, `File saved as data/${res.file}`));
       chooseFile(res.file);
     } catch (e) {
@@ -322,6 +337,14 @@ function InputsSection({ exp, update }: { exp: Experiment; update: (e: Experimen
 
   const p = preview.data;
   const columns = p?.columns ?? [];
+  // This experiment's own files (data/<id>/) and the shared ones (data/).
+  const allFiles = datasets.data ?? [];
+  const ownFiles = allFiles.filter((f) => datasetOwner(f) === exp.id);
+  const sharedFiles = allFiles.filter((f) => datasetOwner(f) === "");
+  const ownsFile = datasetOwner(exp.dataset.file) === exp.id;
+  const listed = allFiles.includes(exp.dataset.file);
+  // Labels are saved into the file itself, which only works for JSONL.
+  const canLabel = /\.(jsonl|ndjson)$/i.test(exp.dataset.file) && exp.dataset.image_columns.length > 0;
 
   return (
     <section className="card sec">
@@ -364,18 +387,39 @@ function InputsSection({ exp, update }: { exp: Experiment; update: (e: Experimen
 
       <div className="field">
         <label htmlFor="ds-file">{t("Arquivo de dados", "Data file")}</label>
-        <select id="ds-file" className="inp" value={exp.dataset.file} onChange={(e) => chooseFile(e.target.value)}>
-          <option value="">{t("— escolha um arquivo —", "— choose a file —")}</option>
-          {(datasets.data ?? []).map((f) => (
-            <option key={f} value={f}>
-              {f}
-            </option>
-          ))}
-        </select>
+        <div className="row" style={{ gap: 8, flexWrap: "nowrap" }}>
+          <select id="ds-file" className="inp" style={{ flex: "1 1 auto", minWidth: 0 }} value={exp.dataset.file} onChange={(e) => chooseFile(e.target.value)}>
+            <option value="">{t("— escolha um arquivo —", "— choose a file —")}</option>
+            {exp.dataset.file && !listed && <option value={exp.dataset.file}>{exp.dataset.file}</option>}
+            {ownFiles.length > 0 && (
+              <optgroup label={t("Deste experimento", "This experiment")}>
+                {ownFiles.map((f) => (
+                  <option key={f} value={f}>
+                    {f.slice(exp.id.length + 1)}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {sharedFiles.length > 0 && (
+              <optgroup label={t("Compartilhados (pasta data/)", "Shared (data/ folder)")}>
+                {sharedFiles.map((f) => (
+                  <option key={f} value={f}>
+                    {f}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+          {ownsFile && (
+            <button className="btn sm danger" onClick={() => setDeleting(true)} aria-label={t(`Excluir ${exp.dataset.file}`, `Delete ${exp.dataset.file}`)}>
+              {t("Excluir", "Delete")}
+            </button>
+          )}
+        </div>
         <span className="hint">
           {t(
-            "CSV com cabeçalho ou JSONL (um objeto JSON por linha). Cada linha vira um input; cada coluna pode ser usada no prompt.",
-            "CSV with a header or JSONL (one JSON object per line). Each line becomes an input; each column can be used in the prompt.",
+            `CSV com cabeçalho ou JSONL (um objeto JSON por linha). Cada linha vira um input; cada coluna pode ser usada no prompt. Arquivos enviados aqui ficam em data/${exp.id}/ e são apagados junto com o experimento.`,
+            `CSV with a header or JSONL (one JSON object per line). Each line becomes an input; each column can be used in the prompt. Files uploaded here go to data/${exp.id}/ and are deleted along with the experiment.`,
           )}
         </span>
       </div>
@@ -391,6 +435,11 @@ function InputsSection({ exp, update }: { exp: Experiment; update: (e: Experimen
             <span className="muted">
               {fmtInt(p.count)} {t("linhas", "rows")} · {columns.length} {t("colunas", "columns")}
             </span>
+            {canLabel && (
+              <button className="btn sm" style={{ marginLeft: "auto" }} onClick={() => setLabeling(exp.dataset.image_columns)}>
+                {t("Rotular imagens", "Label images")}
+              </button>
+            )}
           </div>
 
           <div className="row" style={{ alignItems: "flex-start" }}>
@@ -478,12 +527,175 @@ function InputsSection({ exp, update }: { exp: Experiment; update: (e: Experimen
         </>
       )}
 
-      {pasting && <PasteDialog onClose={() => setPasting(false)} onSaved={(f) => { setPasting(false); chooseFile(f); }} />}
+      {pasting && <PasteDialog experimentId={exp.id} onClose={() => setPasting(false)} onSaved={(f) => { setPasting(false); chooseFile(f); }} />}
+      {deleting && (
+        <Dialog title={t("Excluir arquivo?", "Delete file?")} onClose={() => setDeleting(false)}>
+          <p>
+            {t("O arquivo ", "The file ")}
+            <span className="mono">data/{exp.dataset.file}</span>
+            {/\.(jsonl|ndjson)$/i.test(exp.dataset.file) && exp.dataset.image_columns.length > 0
+              ? t(" e as imagens enviadas com ele serão apagados.", " and the images uploaded with it will be deleted.")
+              : t(" será apagado.", " will be deleted.")}{" "}
+            {t(
+              "Os resultados de execuções anteriores continuam salvos, mas para rodar de novo será preciso escolher outro arquivo.",
+              "Results of earlier runs stay saved, but you'll need to choose another file to run again.",
+            )}
+          </p>
+          <div className="row" style={{ justifyContent: "flex-end" }}>
+            <button className="btn" onClick={() => setDeleting(false)}>
+              {t("Cancelar", "Cancel")}
+            </button>
+            <button className="btn danger solid" onClick={deleteFile}>
+              {t("Excluir", "Delete")}
+            </button>
+          </div>
+        </Dialog>
+      )}
+      {labeling && exp.dataset.file && (
+        <LabelDialog
+          file={exp.dataset.file}
+          imageColumns={labeling}
+          initialColumn={exp.dataset.reference_column}
+          onClose={() => setLabeling(null)}
+          onSaved={(column) => {
+            setLabeling(null);
+            // The labels become the expected answer that evaluators compare against.
+            update({ ...exp, dataset: { ...exp.dataset, reference_column: column } });
+            preview.reload();
+          }}
+        />
+      )}
     </section>
   );
 }
 
-function PasteDialog({ onClose, onSaved }: { onClose: () => void; onSaved: (file: string) => void }) {
+// LabelDialog shows every image of a dataset with a text box for its label,
+// and saves the labels as a column of the dataset (the expected answer).
+function LabelDialog({
+  file,
+  imageColumns,
+  initialColumn,
+  onClose,
+  onSaved,
+}: {
+  file: string;
+  imageColumns: string[];
+  initialColumn: string;
+  onClose: () => void;
+  onSaved: (column: string) => void;
+}) {
+  const toast = useToast();
+  const data = useLoad(() => api.previewDataset(file, 100000), [file]);
+  const [column, setColumn] = useState(initialColumn || t("resposta_esperada", "expected_answer"));
+  const [labels, setLabels] = useState<string[] | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const rows = data.data?.rows ?? [];
+  const existing = data.data?.columns ?? [];
+  // Before the first edit, show what the chosen column already holds.
+  const shown = labels ?? rows.map((r) => r[column.trim()] ?? "");
+  const filled = shown.filter((v) => v.trim()).length;
+  // Labels typed so far, offered as suggestions so a class is typed only once.
+  const suggestions = Array.from(new Set(shown.map((v) => v.trim()).filter(Boolean))).sort();
+  const imageColumn = imageColumns.find((c) => existing.includes(c)) ?? imageColumns[0];
+
+  function setLabel(i: number, value: string) {
+    const next = [...shown];
+    next[i] = value;
+    setLabels(next);
+  }
+
+  async function save() {
+    setSaving(true);
+    try {
+      await api.setDatasetColumn(file, column.trim(), shown.map((v) => v.trim()));
+      toast(t(`Rótulos salvos na coluna ${column.trim()}`, `Labels saved in the ${column.trim()} column`));
+      onSaved(column.trim());
+    } catch (e) {
+      toast((e as Error).message, "err");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog title={t("Rotular imagens", "Label images")} onClose={onClose}>
+      <div className="field">
+        <label htmlFor="label-col">{t("Coluna do rótulo", "Label column")}</label>
+        <input
+          id="label-col"
+          className="inp mono"
+          list="label-col-options"
+          value={column}
+          onChange={(e) => {
+            setColumn(e.target.value);
+            if (!labels || labels.every((v) => !v.trim())) setLabels(null);
+          }}
+        />
+        <datalist id="label-col-options">
+          {existing.filter((c) => !imageColumns.includes(c)).map((c) => (
+            <option key={c} value={c} />
+          ))}
+        </datalist>
+        <span className="hint">
+          {t(
+            "Escreva a resposta certa de cada imagem (ex.: a classe). Ao salvar, essa coluna vira a resposta esperada do experimento, e os avaliadores comparam a resposta do modelo com ela.",
+            "Write the right answer for each image (e.g. its class). When you save, this column becomes the experiment's expected answer, and evaluators compare the model's answer with it.",
+          )}
+        </span>
+      </div>
+
+      {data.error && <div className="banner err">{data.error}</div>}
+      {data.loading && <span className="muted">{t("Carregando…", "Loading…")}</span>}
+
+      {rows.length > 0 && (
+        <>
+          <div style={{ maxHeight: "50vh", overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
+            {rows.map((row, i) => (
+              <div key={i} className="row" style={{ gap: 12, flexWrap: "nowrap" }}>
+                <span className="mono muted" style={{ width: 28, flexShrink: 0 }}>
+                  {i + 1}
+                </span>
+                {row[imageColumn] ? (
+                  <img src={imageURL(row[imageColumn])} alt={row.arquivo || row[imageColumn]} title={row.arquivo || row[imageColumn]} className="thumb" style={{ flexShrink: 0 }} />
+                ) : (
+                  <span className="muted">—</span>
+                )}
+                <input
+                  className="inp"
+                  style={{ flex: "1 1 auto", minWidth: 0 }}
+                  list="label-suggestions"
+                  aria-label={t(`Rótulo da imagem ${i + 1}`, `Label for image ${i + 1}`)}
+                  value={shown[i]}
+                  onChange={(e) => setLabel(i, e.target.value)}
+                />
+              </div>
+            ))}
+            <datalist id="label-suggestions">
+              {suggestions.map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
+          </div>
+          <span className="hint">
+            {t(`${filled} de ${rows.length} imagens rotuladas.`, `${filled} of ${rows.length} images labeled.`)}
+          </span>
+        </>
+      )}
+
+      <div className="row" style={{ justifyContent: "flex-end" }}>
+        <button className="btn" onClick={onClose}>
+          {t("Cancelar", "Cancel")}
+        </button>
+        <button className="btn pri" disabled={saving || !column.trim() || rows.length === 0 || imageColumns.includes(column.trim())} onClick={save}>
+          {t("Salvar rótulos", "Save labels")}
+        </button>
+      </div>
+    </Dialog>
+  );
+}
+
+function PasteDialog({ experimentId, onClose, onSaved }: { experimentId: string; onClose: () => void; onSaved: (file: string) => void }) {
   const toast = useToast();
   const [name, setName] = useState(t("textos colados", "pasted texts"));
   const [text, setText] = useState("");
@@ -491,7 +703,7 @@ function PasteDialog({ onClose, onSaved }: { onClose: () => void; onSaved: (file
 
   async function save() {
     try {
-      const res = await api.pasteDataset(name, text);
+      const res = await api.pasteDataset(name, text, experimentId);
       toast(t(`Salvo como data/${res.file}`, `Saved as data/${res.file}`));
       onSaved(res.file);
     } catch (e) {

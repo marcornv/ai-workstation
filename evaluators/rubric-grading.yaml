@@ -1,0 +1,11 @@
+name: Rubric grading
+description: A model gives a score following criteria you write.
+kind: llm_judge
+threshold: 0.7
+judge_provider: ollama
+judge_model: lfm3-omni
+rubric: |-
+  Give the answer a score from 0 to 1.
+  1 = correct, complete and nothing made up.
+  0 = wrong or off topic.
+  Penalize claims that are not in the input.

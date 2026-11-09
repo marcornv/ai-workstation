@@ -164,7 +164,7 @@ To close it, close the terminal window (or press `Ctrl+C`).
 ## Your first experiment
 
 1. In **Settings**, click **Set key** on the provider you'll use. If you'll only use Ollama, you don't need a key.
-2. In **Experiments**, open *Exemplo - perguntas gerais* or create a new one. The example uses the Ollama models `lfm3-omni` and `lfm3:1.7B`: download them in **Settings › Download model**, or swap them for others in the **Setup** tab.
+2. In **Experiments**, open *Example - general questions* (or its Portuguese version, *Exemplo - perguntas gerais*) or create a new one. The example uses the Ollama models `lfm3-omni` and `lfm3:1.7B`: download them in **Settings › Download model**, or swap them for others in the **Setup** tab.
 3. In the **Setup** tab, choose the models, write the prompt (use `{column}` to insert data) and upload a CSV, JSONL or images.
 4. Click **Run experiment**. Bancada shows the estimated cost before spending anything, and suggests testing with 1 input first.
 5. See answers, tokens, latency and cost in the **Results** tab. In the **Evaluation** tab, turn on evaluators and click **Evaluate run**.
@@ -180,6 +180,12 @@ Evaluators give each answer a score from 0 to 1. Create them in **Evaluators** a
 | Embedding | Similarity in meaning to the expected answer | Embedding model |
 | Rule | Equals the reference, contains a text or matches a regex | Nothing (free) |
 | Decision engine | A decision model answers with probabilities | Decision model (Laya, JEV) |
+
+Bancada comes with three example evaluators, in English and in Portuguese:
+
+- **Contains the expected answer** (rule): works right away, no key or model needed.
+- **Rubric grading** (LLM judge): uses Ollama's `lfm3-omni`, the same model as the example experiment. Once you've downloaded it, no key is needed.
+- **Faithfulness** (Ragas): uses Claude as the judge, so it needs an Anthropic key. Without one, change the judge model in **Evaluators**.
 
 ### Decision engine (Laya, JEV)
 
@@ -203,7 +209,7 @@ Decision evaluators work even without the Python service. Thresholds don't carry
 
 You don't need to run an experiment to know whether an evaluator is good. In **Evaluators**, open a saved evaluator and use **Test with a spreadsheet**:
 
-1. Choose or upload a CSV/JSONL with the answers to judge (see the example `data/exemplo-validador.csv`).
+1. Choose or upload a CSV/JSONL with the answers to judge (see the example `data/example-validator.csv`).
 2. Pick the columns. The answer is required; the rest is optional: input, expected answer, context, images and **your verdict** (yes/no, 1/0, pass/fail or a score from 0 to 1).
 3. Click **Run test**.
 
@@ -219,10 +225,11 @@ Each test is saved, so you can compare after tweaking the evaluator, and can be 
 Experiments can send images along with the prompt, for example to describe photos, read receipts or classify images.
 
 - **Easiest way:** in **Inputs › Upload images**, choose several images at once. Each image becomes an input, in the `imagem` column.
+- **Labeling images:** right after the upload, a window shows every image with a box for its label (e.g. the right class). Saving turns that column into the **expected answer**, so evaluators such as *Contains the expected answer* compare the model's answer with your label. To change the labels later, use **Label images** above the data preview.
 - **With a spreadsheet:** put the images inside `data/` (e.g. `data/images/photos/001.jpg`) and create a CSV with a column holding the path relative to `data/` (`images/photos/001.jpg`) or an `https://…` link. Then select that column under **Image columns**.
 - Formats: PNG, JPEG, GIF and WEBP, up to 20 MB each.
 - Use vision models such as GPT-4o, Claude, Gemini or, on Ollama, `gemma3`, `llava` and `qwen2.5vl`. Models without vision will error out or ignore the image.
-- Evaluators only look at text (prompt, answer and reference), not the image. The exception is the Decision engine with "Also send the input images", which requires a vision model.
+- Evaluators only look at text (prompt, answer and reference), not the image. The exceptions are the **LLM judge** and the **Decision engine** with "Also send the input images" turned on. Both need a judge or decision model with vision. The LLM judge works with any provider; the Decision engine only through Ollama.
 
 ## Where everything lives
 
@@ -231,9 +238,12 @@ Experiments can send images along with the prompt, for example to describe photo
 | General settings (providers, prices, default judge) | `bancada.yaml` (created the first time Bancada starts) |
 | Experiments | `experiments/<name>.yaml` |
 | Evaluators | `evaluators/<name>.yaml` |
-| Data (CSV / JSONL) and images | `data/` (uploaded images in `data/images/`) |
+| Data uploaded in an experiment (CSV / JSONL / images) | `data/<experiment>/` (images in `data/<experiment>/images/`) |
+| Shared data | directly in `data/` |
 | Run and test results | `data/bancada.db` (SQLite) |
 | API keys | `.env` |
+
+Files uploaded from an experiment's **Setup** tab belong to that experiment. They're listed first in **Data file**, can be deleted with the **Delete** button next to it, and are deleted along with the experiment. Duplicating an experiment copies its folder. Files you put directly in `data/` are shared: every experiment can use them and Bancada never deletes them. Images uploaded before this change stay in `data/images/` and remain shared.
 
 With Docker, all of this lives inside `bancada-data/`.
 

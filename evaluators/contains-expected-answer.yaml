@@ -1,0 +1,5 @@
+name: Contains the expected answer
+description: Scores 1 if the answer contains the text from the expected answer column.
+kind: rule
+metric: contains
+threshold: 1
