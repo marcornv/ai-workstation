@@ -118,7 +118,7 @@ export default function ResultsTab({ exp, onRun }: { exp: Experiment; onRun: () 
           <span className="v">
             {fmtCompact(summary.input_tokens)} / {fmtCompact(summary.output_tokens)}
           </span>
-          <span className="l">{fmtCompact(summary.input_tokens + summary.output_tokens)} no total</span>
+          <span className="l">{t(`${fmtCompact(summary.input_tokens + summary.output_tokens)} no total`, `${fmtCompact(summary.input_tokens + summary.output_tokens)} total`)}</span>
         </div>
         <div className="card kpi">
           <span className="l">{t("Latência mediana", "Median latency")}</span>
