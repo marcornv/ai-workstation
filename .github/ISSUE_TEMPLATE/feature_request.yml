@@ -1,0 +1,32 @@
+name: Feature request / Sugerir uma melhoria
+description: An idea to make Bancada more useful. / Uma ideia para deixar o Bancada mais útil.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        English or Portuguese are both fine. / Pode escrever em português ou inglês.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do? / O que você está tentando fazer?
+      description: Describe the task or experiment, not the solution yet. / Descreva a tarefa ou o experimento, ainda não a solução.
+      placeholder: "e.g. I want to compare how 3 models classify 200 product photos... / ex.: Quero comparar como 3 modelos classificam 200 fotos de produtos..."
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help? / O que ajudaria?
+      description: How you imagine it working in Bancada. / Como você imagina que isso funcionaria no Bancada.
+  - type: textarea
+    id: workaround
+    attributes:
+      label: How do you do it today? / Como você faz isso hoje?
+      description: Any workaround or other tool you use. / Algum jeito alternativo ou outra ferramenta que você usa.
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contributing / Contribuição
+      options:
+        - label: I'd like to help build this. / Gostaria de ajudar a construir isso.

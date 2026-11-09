@@ -1,0 +1,72 @@
+name: Bug report / Relatar um problema
+description: Something doesn't work as expected. / Algo não funciona como deveria.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! You don't need to know how to code to fill this in. English or Portuguese are both fine.
+        Obrigado por relatar! Não precisa saber programar para preencher. Pode escrever em português ou inglês.
+
+        **Never paste API keys.** / **Nunca cole chaves de API.**
+        Security problems: use [private reporting](../security/advisories/new) instead. / Falhas de segurança: use o [relato privado](../security/advisories/new).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened? / O que aconteceu?
+      description: What did you do, what did you expect, and what happened instead? / O que você fez, o que esperava e o que aconteceu?
+      placeholder: |
+        1. I opened the experiment... / Abri o experimento...
+        2. I clicked "Run experiment"... / Cliquei em "Rodar experimento"...
+        3. I saw this error: ... / Apareceu este erro: ...
+    validations:
+      required: true
+  - type: textarea
+    id: error
+    attributes:
+      label: Error message or screenshot / Mensagem de erro ou print
+      description: Copy the error text, or drag a screenshot here. / Copie o texto do erro, ou arraste um print para cá.
+  - type: dropdown
+    id: install
+    attributes:
+      label: How do you run Bancada? / Como você roda o Bancada?
+      options:
+        - Docker (docker compose up)
+        - Without Docker / Sem Docker (start.sh, start.bat, make run)
+        - Development / Desenvolvimento (make dev)
+        - I don't know / Não sei
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system / Sistema operacional
+      options:
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where does it happen? / Onde acontece?
+      multiple: true
+      options:
+        - Installing or starting / Instalação ou inicialização
+        - Settings, providers or keys / Configurações, provedores ou chaves
+        - Experiment setup or data upload / Configuração do experimento ou envio de dados
+        - Images / Imagens
+        - Running an experiment or results / Execução ou resultados
+        - Evaluators or evaluation / Avaliadores ou avaliação
+        - Something else / Outro
+  - type: input
+    id: provider
+    attributes:
+      label: Provider and model, if relevant / Provedor e modelo, se for o caso
+      placeholder: "e.g. / ex.: Ollama gemma3:4b, OpenAI gpt-4o-mini"
+  - type: input
+    id: version
+    attributes:
+      label: Version / Versão
+      description: Release number, or the date you downloaded it. / Número da versão, ou a data em que você baixou.

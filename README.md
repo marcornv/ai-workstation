@@ -261,6 +261,11 @@ A interface, as mensagens de erro e os motivos dos avaliadores existem em portug
 - As chaves de API ficam no arquivo `.env`, que só o seu usuário pode ler. O `bancada.yaml` guarda apenas o *nome* da variável. Nenhum dos dois vai para o Git.
 - Nada roda em APIs pagas sem você ver a estimativa de custo e confirmar.
 - Arquivos de dados enviados nunca sobrescrevem outros: um nome repetido ganha um sufixo `-2`, `-3`…
+- Encontrou uma falha de segurança? Relate de forma privada, como explicado em [SECURITY.md](SECURITY.md).
+
+## Como contribuir
+
+Relatos de problemas, ideias e pull requests são bem-vindos, em português ou inglês. Não precisa programar para ajudar: contar o que ficou confuso na instalação já ajuda muito. Veja [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
