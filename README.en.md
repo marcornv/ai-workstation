@@ -259,6 +259,11 @@ The interface, error messages and evaluator reasons are available in Portuguese 
 - API keys live in the `.env` file, which only your user can read. `bancada.yaml` only stores the variable's *name*. Neither goes into Git.
 - Nothing runs on paid APIs without you seeing the cost estimate and confirming.
 - Uploaded data files never overwrite others: a repeated name gets a `-2`, `-3`… suffix.
+- Found a security problem? Please report it privately, as described in [SECURITY.md](SECURITY.md).
+
+## Contributing
+
+Bug reports, ideas and pull requests are welcome, in English or Portuguese. You don't need to code to help: reporting what confused you during installation is just as useful. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## For developers
 

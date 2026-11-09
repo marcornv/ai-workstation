@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security problem / Falha de segurança
+    url: https://github.com/marcornv/ai-workstation/security/advisories/new
+    about: Report vulnerabilities privately, not in a public issue. / Relate falhas de forma privada, não em uma issue pública.
+  - name: Step-by-step guide / Passo a passo para iniciantes
+    url: https://github.com/marcornv/ai-workstation#readme
+    about: Installation help for people who have never coded. / Ajuda para instalar, para quem nunca programou.
