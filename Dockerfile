@@ -24,7 +24,7 @@ COPY --from=server /bancada /usr/local/bin/bancada
 # Example experiment, evaluators and data, copied into the workspace on first start.
 COPY experiments /app/examples/experiments
 COPY evaluators /app/examples/evaluators
-COPY data/exemplo-*.csv /app/examples/data/
+COPY data/exemplo-*.csv data/example-*.csv /app/examples/data/
 COPY docker/entrypoint.sh /app/entrypoint.sh
 
 # Everything the user creates lives in /workspace (a folder on the host, see docker-compose.yml).

@@ -164,39 +164,61 @@ export default function ExperimentPage() {
           }}
         />
       )}
-      {showDelete && (
-        <Dialog title={t("Excluir experimento?", "Delete experiment?")} onClose={() => setShowDelete(false)}>
-          <p>
-            {t("O arquivo ", "The file ")}<span className="mono">experiments/{exp.id}.yaml</span>
-            {t(
-              " e todas as execuções deste experimento serão apagados. Os arquivos de dados continuam na pasta ",
-              " and all runs of this experiment will be deleted. Data files stay in the ",
-            )}
-            <span className="mono">data/</span>
-            {t(".", " folder.")}
-          </p>
-          <div className="row" style={{ justifyContent: "flex-end" }}>
-            <button className="btn" onClick={() => setShowDelete(false)}>
-              {t("Cancelar", "Cancel")}
-            </button>
-            <button
-              className="btn danger solid"
-              onClick={async () => {
-                try {
-                  await api.deleteExperiment(exp.id);
-                  toast(t("Experimento excluído.", "Experiment deleted."));
-                  navigate("/");
-                } catch (e) {
-                  toast((e as Error).message, "err");
-                }
-              }}
-            >
-              {t("Excluir", "Delete")}
-            </button>
-          </div>
-        </Dialog>
-      )}
+      {showDelete && <DeleteExperimentDialog exp={exp} onClose={() => setShowDelete(false)} onDeleted={() => navigate("/")} />}
     </>
+  );
+}
+
+// DeleteExperimentDialog says exactly what goes away: the YAML, the runs and
+// the experiment's own data folder (data/<id>/). Shared files in data/ stay.
+function DeleteExperimentDialog({ exp, onClose, onDeleted }: { exp: Experiment; onClose: () => void; onDeleted: () => void }) {
+  const toast = useToast();
+  const data = useLoad(() => api.experimentData(exp.id), [exp.id]);
+  const usage = data.data?.usage;
+  const hasData = !!usage && (usage.files > 0 || usage.images > 0);
+  const mb = usage ? usage.bytes / (1024 * 1024) : 0;
+
+  async function remove() {
+    try {
+      await api.deleteExperiment(exp.id);
+      toast(t("Experimento excluído.", "Experiment deleted."));
+      onDeleted();
+    } catch (e) {
+      toast((e as Error).message, "err");
+    }
+  }
+
+  return (
+    <Dialog title={t("Excluir experimento?", "Delete experiment?")} onClose={onClose}>
+      <p>
+        {t("O arquivo ", "The file ")}
+        <span className="mono">experiments/{exp.id}.yaml</span>
+        {t(" e todas as execuções deste experimento serão apagados.", " and all runs of this experiment will be deleted.")}
+      </p>
+      {hasData && usage && (
+        <p>
+          {t("A pasta ", "The folder ")}
+          <span className="mono">data/{exp.id}/</span>
+          {t(
+            ` também será apagada: ${fmtInt(usage.files)} arquivo(s) de dados e ${fmtInt(usage.images)} imagem(ns), ${mb < 0.1 ? "menos de 0,1" : mb.toFixed(1).replace(".", ",")} MB.`,
+            ` will be deleted too: ${fmtInt(usage.files)} data file(s) and ${fmtInt(usage.images)} image(s), ${mb < 0.1 ? "under 0.1" : mb.toFixed(1)} MB.`,
+          )}
+        </p>
+      )}
+      <p className="muted">
+        {t("Arquivos compartilhados, direto na pasta ", "Shared files, directly in the ")}
+        <span className="mono">data/</span>
+        {t(", continuam lá.", " folder, stay where they are.")}
+      </p>
+      <div className="row" style={{ justifyContent: "flex-end" }}>
+        <button className="btn" onClick={onClose}>
+          {t("Cancelar", "Cancel")}
+        </button>
+        <button className="btn danger solid" disabled={data.loading} onClick={remove}>
+          {t("Excluir", "Delete")}
+        </button>
+      </div>
+    </Dialog>
   );
 }
 

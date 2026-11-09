@@ -312,7 +312,8 @@ type Evaluator struct {
 	// Text the decision model reads. Placeholders: {question} {answer} {reference} {context}.
 	// Empty = defaultStateTemplate.
 	StateTemplate string `yaml:"state_template,omitempty" json:"state_template"`
-	// Also send the input's images (only for vision decision models on Ollama).
+	// Also send the input's images: for decision models (vision models on Ollama)
+	// and LLM judges (any provider, as long as the judge model has vision).
 	SendImages bool `yaml:"send_images,omitempty" json:"send_images"`
 }
 

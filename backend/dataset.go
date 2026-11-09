@@ -25,13 +25,22 @@ type Dataset struct {
 
 const maxDatasetBytes = 50 << 20 // 50 MB is plenty for prompt experiments
 
+// datasetPath accepts "name.csv" (shared, directly in data/) or
+// "<experiment id>/name.csv" (in that experiment's folder, see experiment_data.go).
 func datasetPath(cfg Config, file string) (string, error) {
-	// filepath.Base removes any "../" so a file name can't escape the folder.
-	name := filepath.Base(file)
-	if name != file || name == "." || name == "" {
-		return "", fmt.Errorf(tr("nome de arquivo inválido: %q", "invalid file name: %q"), file)
+	invalid := fmt.Errorf(tr("nome de arquivo inválido: %q", "invalid file name: %q"), file)
+	owner, name := "", file
+	if before, after, found := strings.Cut(file, "/"); found {
+		owner, name = before, after
+		if !ownsDataDir(owner) {
+			return "", invalid
+		}
 	}
-	return filepath.Join(cfg.Paths.Datasets, name), nil
+	// filepath.Base removes any "../" so a file name can't escape the folder.
+	if filepath.Base(name) != name || name == "." || name == ".." || name == "" || strings.Contains(name, "\\") {
+		return "", invalid
+	}
+	return filepath.Join(cfg.Paths.Datasets, owner, name), nil
 }
 
 func loadDataset(cfg Config, file string) (Dataset, error) {
@@ -191,4 +200,42 @@ func templateColumns(template string) []string {
 		cols = append(cols, m[1])
 	}
 	return cols
+}
+
+// setJSONLColumn sets one column on every row of a JSONL dataset, keeping the
+// other fields as they are. values[i] goes to the i-th row (blank lines are
+// not rows), so len(values) must match the number of rows.
+func setJSONLColumn(data []byte, column string, values []string) ([]byte, error) {
+	var out bytes.Buffer
+	scanner := bufio.NewScanner(bytes.NewReader(data))
+	scanner.Buffer(make([]byte, 1024*1024), maxDatasetBytes)
+	row := 0
+	for scanner.Scan() {
+		line := bytes.TrimSpace(scanner.Bytes())
+		if len(line) == 0 {
+			continue
+		}
+		if row >= len(values) {
+			return nil, errors.New(tr("o arquivo tem mais linhas do que valores enviados", "the file has more rows than values sent"))
+		}
+		var obj map[string]any
+		if err := json.Unmarshal(line, &obj); err != nil {
+			return nil, fmt.Errorf(tr("linha %d não é um JSON válido: %w", "line %d is not valid JSON: %w"), row+1, err)
+		}
+		obj[column] = values[row]
+		encoded, err := json.Marshal(obj)
+		if err != nil {
+			return nil, err
+		}
+		out.Write(encoded)
+		out.WriteByte('\n')
+		row++
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	if row != len(values) {
+		return nil, errors.New(tr("o arquivo tem menos linhas do que valores enviados", "the file has fewer rows than values sent"))
+	}
+	return out.Bytes(), nil
 }

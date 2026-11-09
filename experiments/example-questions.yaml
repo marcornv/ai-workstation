@@ -1,0 +1,23 @@
+name: Example - general questions
+description: Simple questions to test your setup
+use_case: free
+models:
+  - model: lfm3-omni:latest
+    provider: ollama
+    enabled: true
+  - model: lfm3:1.7B
+    provider: ollama
+    enabled: true
+prompt:
+  system: Answer in English, in one short sentence.
+  user: '{question}'
+dataset:
+  file: example-questions.csv
+  reference_column: expected_answer
+run:
+  repetitions: 1
+  concurrency: 2
+  timeout_s: 120
+evaluators:
+  - contains-expected-answer
+  - rubric-grading

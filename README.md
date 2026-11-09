@@ -181,6 +181,12 @@ Avaliadores dão uma nota de 0 a 1 para cada resposta. Crie em **Avaliadores** e
 | Regra | Igual à referência, contém um texto ou casa com uma regex | Nada (sem custo) |
 | Motor de decisão | Um modelo de decisão responde com probabilidades | Modelo de decisão (Laya, JEV) |
 
+O Bancada já vem com três avaliadores de exemplo, em português e em inglês:
+
+- **Contém a resposta esperada** (regra): funciona na hora, sem chave nem modelo.
+- **Correção por rubrica** (juiz LLM): usa o `lfm3-omni` do Ollama, o mesmo modelo do experimento de exemplo. Baixando ele, não precisa de chave.
+- **Fidelidade** (Ragas): usa o Claude como juiz, então precisa de uma chave da Anthropic. Sem chave, troque o modelo juiz em **Avaliadores**.
+
 ### Motor de decisão (Laya, JEV)
 
 Um **modelo de decisão** não gera texto: lê a resposta e devolve probabilidades. É rápido e dá números consistentes.
@@ -219,10 +225,11 @@ Cada teste fica guardado, para comparar depois de ajustar o avaliador, e pode se
 Experimentos podem enviar imagens junto com o prompt, por exemplo para descrever fotos, ler notas fiscais ou classificar imagens.
 
 - **Jeito mais fácil:** em **Inputs › Enviar imagens**, escolha várias imagens de uma vez. Cada imagem vira um input, na coluna `imagem`.
+- **Rotulando imagens:** logo depois do envio, uma janela mostra cada imagem com um campo para o rótulo (ex.: a classe certa). Ao salvar, essa coluna vira a **resposta esperada**, e avaliadores como *Contém a resposta esperada* comparam a resposta do modelo com o seu rótulo. Para mudar os rótulos depois, use **Rotular imagens** acima da prévia dos dados.
 - **Com uma planilha:** coloque as imagens dentro de `data/` (ex.: `data/images/fotos/001.jpg`) e crie um CSV com uma coluna contendo o caminho a partir de `data/` (`images/fotos/001.jpg`) ou um link `https://…`. Depois marque essa coluna em **Colunas com imagens**.
 - Formatos: PNG, JPEG, GIF e WEBP, até 20 MB cada.
 - Use modelos com visão, como GPT-4o, Claude, Gemini ou, no Ollama, `gemma3`, `llava` e `qwen2.5vl`. Modelos sem visão vão dar erro ou ignorar a imagem.
-- Os avaliadores olham só o texto (prompt, resposta e referência), não a imagem. A exceção é o Motor de decisão com "Enviar também as imagens", que exige um modelo com visão.
+- Os avaliadores olham só o texto (prompt, resposta e referência), não a imagem. As exceções são o **Juiz LLM** e o **Motor de decisão** com "Enviar também as imagens" ligado. Os dois precisam de um modelo juiz ou de decisão com visão. O Juiz LLM funciona com qualquer provedor; o Motor de decisão, só pelo Ollama.
 
 ## Onde fica cada coisa
 
@@ -231,9 +238,12 @@ Experimentos podem enviar imagens junto com o prompt, por exemplo para descrever
 | Configuração geral (provedores, preços, juiz padrão) | `bancada.yaml` (criado na primeira vez que o Bancada abre) |
 | Experimentos | `experiments/<nome>.yaml` |
 | Avaliadores | `evaluators/<nome>.yaml` |
-| Dados (CSV / JSONL) e imagens | `data/` (imagens enviadas em `data/images/`) |
+| Dados enviados em um experimento (CSV / JSONL / imagens) | `data/<experimento>/` (imagens em `data/<experimento>/images/`) |
+| Dados compartilhados | direto em `data/` |
 | Resultados das execuções e testes | `data/bancada.db` (SQLite) |
 | Chaves de API | `.env` |
+
+Arquivos enviados pela aba **Configuração** de um experimento pertencem a ele. Aparecem primeiro em **Arquivo de dados**, podem ser apagados pelo botão **Excluir** ao lado e são apagados junto com o experimento. Duplicar um experimento copia a pasta dele. Arquivos colocados direto em `data/` são compartilhados: todos os experimentos podem usar e o Bancada nunca apaga. Imagens enviadas antes dessa mudança continuam em `data/images/` e seguem compartilhadas.
 
 Com Docker, tudo isso fica dentro de `bancada-data/`.
 
@@ -292,6 +302,7 @@ The backend is one Go package with one file per topic. There are no layers: hand
 | `keys.go` | API keys via env vars and the local `.env` file |
 | `dataset.go` | CSV/JSONL parsing, `{column}` template filling |
 | `images.go` | image inputs: safe paths, loading files/URLs, type detection |
+| `experiment_data.go` | each experiment's own data folder (`data/<id>/`): listing, deleting, copying on duplicate |
 | `providers.go` | one plain-HTTP function per provider (OpenAI, Anthropic, Gemini, Ollama) |
 | `runner.go` | runs an experiment with a goroutine worker pool |
 | `stats.go` | cost, estimates, p50/p95 summaries |

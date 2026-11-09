@@ -100,14 +100,17 @@ def split_context(context: str) -> list[str]:
 # ---------- LLM judge with a custom rubric ----------
 
 
-def llm_judge(judge: dict, item: dict, rubric: str) -> tuple[float, str]:
+def llm_judge(judge: dict, item: dict, rubric: str, images: list[dict] | None = None) -> tuple[float, str]:
     reference = f"\n\nExpected answer (reference):\n{item['reference']}" if item.get("reference") else ""
+    # With images, the judge sees the same pictures the model saw.
+    attached = f"\n\nThe input also included the {len(images)} attached image(s)." if images else ""
     result = parse_json(chat(
         judge,
         "You are a strict evaluator. Grade the answer using the rubric. "
         'Reply with JSON only: {"nota": number between 0 and 1, "motivo": "short reason in '
         + tr("Portuguese", "English") + '"}.',
-        f"Rubric:\n{rubric}\n\nInput given to the model:\n{item['question']}{reference}\n\nModel answer:\n{item['answer']}",
+        f"Rubric:\n{rubric}\n\nInput given to the model:\n{item['question']}{attached}{reference}\n\nModel answer:\n{item['answer']}",
+        images=images,
     ))
     score = result.get("nota", result.get("score"))
     reason = result.get("motivo", result.get("reason", ""))

@@ -25,16 +25,22 @@ def _raise_for_status(resp: httpx.Response) -> None:
         raise RuntimeError(tr(f"HTTP {resp.status_code} do provedor: ", f"HTTP {resp.status_code} from the provider: ") + resp.text[:300])
 
 
-def chat(endpoint: dict, system: str, user: str, max_tokens: int = 2048) -> str:
-    """Send one prompt and return the text answer."""
+def chat(endpoint: dict, system: str, user: str, max_tokens: int = 2048, images: list[dict] | None = None) -> str:
+    """Send one prompt and return the text answer.
+
+    images: optional [{"media_type": "image/png", "data": <base64>}], attached
+    to the user message in each provider's format (as in backend/providers.go).
+    The model must have vision.
+    """
     kind = endpoint["kind"]
     model = endpoint["model"]
     key = endpoint.get("api_key") or ""
+    images = images or []
 
     if kind in ("openai", "openai_compatible"):
         body = {
             "model": model,
-            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": _openai_content(user, images)}],
         }
         body["max_completion_tokens" if kind == "openai" else "max_tokens"] = max_tokens
         headers = {"Authorization": f"Bearer {key}"} if key else {}
@@ -48,7 +54,7 @@ def chat(endpoint: dict, system: str, user: str, max_tokens: int = 2048) -> str:
             "model": model,
             "max_tokens": max_tokens,
             "system": system,
-            "messages": [{"role": "user", "content": user}],
+            "messages": [{"role": "user", "content": _anthropic_content(user, images)}],
         }
         headers = {"x-api-key": key, "anthropic-version": "2026-10-21"}
         resp = httpx.post(f"{_base(endpoint, 'https://api.anthropic.com')}/v1/messages",
@@ -62,7 +68,7 @@ def chat(endpoint: dict, system: str, user: str, max_tokens: int = 2048) -> str:
     if kind == "gemini":
         body = {
             "systemInstruction": {"parts": [{"text": system}]},
-            "contents": [{"role": "user", "parts": [{"text": user}]}],
+            "contents": [{"role": "user", "parts": _gemini_parts(user, images)}],
             "generationConfig": {"temperature": 0, "maxOutputTokens": max_tokens},
         }
         url = f"{_base(endpoint, 'https://generativelanguage.googleapis.com')}/v1beta/models/{model}:generateContent"
@@ -78,13 +84,43 @@ def chat(endpoint: dict, system: str, user: str, max_tokens: int = 2048) -> str:
             "model": model,
             "stream": False,
             "options": {"temperature": 0, "num_predict": max_tokens},
-            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+            "messages": [{"role": "system", "content": system}, _ollama_user(user, images)],
         }
         resp = httpx.post(f"{_base(endpoint, 'http://localhost:11434')}/api/chat", json=body, timeout=TIMEOUT)
         _raise_for_status(resp)
         return resp.json()["message"]["content"]
 
     raise ValueError(tr(f"tipo de provedor desconhecido: {kind}", f"unknown provider kind: {kind}"))
+
+
+def _openai_content(user: str, images: list[dict]):
+    if not images:
+        return user
+    parts = [{"type": "text", "text": user}]
+    for img in images:
+        parts.append({"type": "image_url", "image_url": {"url": f"data:{img['media_type']};base64,{img['data']}"}})
+    return parts
+
+
+def _anthropic_content(user: str, images: list[dict]):
+    if not images:
+        return user
+    # Images first, then the text: Claude works best with that order.
+    parts = [{"type": "image", "source": {"type": "base64", "media_type": img["media_type"], "data": img["data"]}}
+             for img in images]
+    return parts + [{"type": "text", "text": user}]
+
+
+def _gemini_parts(user: str, images: list[dict]) -> list[dict]:
+    parts = [{"inlineData": {"mimeType": img["media_type"], "data": img["data"]}} for img in images]
+    return parts + [{"text": user}]
+
+
+def _ollama_user(user: str, images: list[dict]) -> dict:
+    message = {"role": "user", "content": user}
+    if images:
+        message["images"] = [img["data"] for img in images]
+    return message
 
 
 def embed(endpoint: dict, texts: list[str]) -> list[list[float]]:

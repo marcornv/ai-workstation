@@ -322,6 +322,13 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 }
 
 const enc = encodeURIComponent;
+const inExperiment = (id?: string) => (id ? `?experiment=${enc(id)}` : "");
+
+// datasetOwner returns the experiment that owns a dataset ("" = shared file in data/).
+export function datasetOwner(file: string): string {
+  const slash = file.indexOf("/");
+  return slash < 0 ? "" : file.slice(0, slash);
+}
 
 // ---------- Endpoints ----------
 
@@ -363,21 +370,33 @@ export const api = {
     request<EvalProgress>("POST", `/api/runs/${runId}/evaluate`, { evaluators }),
   runEvaluation: (runId: number) => request<RunEvaluation>("GET", `/api/runs/${runId}/evaluation`),
 
-  datasets: () => request<string[]>("GET", "/api/datasets"),
-  uploadDataset: (file: File) => {
+  // With experimentId: that experiment's files ("<id>/name.csv") first, then the
+  // shared ones in data/. Without it: shared files plus every experiment's files.
+  datasets: (experimentId?: string) => request<string[]>("GET", "/api/datasets" + inExperiment(experimentId)),
+  // Uploads with experimentId go into that experiment's folder (data/<id>/);
+  // without it, into data/ (shared).
+  uploadDataset: (file: File, experimentId?: string) => {
     const form = new FormData();
     form.append("file", file);
-    return request<{ file: string }>("POST", "/api/datasets", form);
+    return request<{ file: string }>("POST", "/api/datasets" + inExperiment(experimentId), form);
   },
-  uploadImages: (name: string, files: FileList) => {
+  uploadImages: (name: string, files: FileList, experimentId?: string) => {
     const form = new FormData();
     form.append("name", name);
     for (const f of Array.from(files)) form.append("files", f);
-    return request<{ file: string; image_columns: string[]; count: number }>("POST", "/api/datasets/images", form);
+    return request<{ file: string; image_columns: string[]; count: number }>("POST", "/api/datasets/images" + inExperiment(experimentId), form);
   },
-  pasteDataset: (name: string, text: string) => request<{ file: string }>("POST", "/api/datasets", { name, text }),
+  pasteDataset: (name: string, text: string, experimentId?: string) =>
+    request<{ file: string }>("POST", "/api/datasets" + inExperiment(experimentId), { name, text }),
+  // Only files in an experiment's folder can be deleted (with their images).
+  deleteDataset: (file: string) => request<{ ok: boolean }>("DELETE", `/api/datasets/${enc(file)}`),
+  experimentData: (id: string) =>
+    request<{ folder: string; usage: { files: number; images: number; bytes: number } }>("GET", `/api/experiments/${enc(id)}/data`),
   previewDataset: (file: string, limit = 5) =>
     request<DatasetPreview>("GET", `/api/datasets/${enc(file)}?limit=${limit}`),
+  // Fills one column of a JSONL dataset, one value per row (e.g. image labels).
+  setDatasetColumn: (file: string, column: string, values: string[]) =>
+    request<{ file: string; column: string; count: number }>("PUT", `/api/datasets/${enc(file)}/column`, { column, values }),
 
   evaluators: (experimentId?: string) =>
     request<Evaluator[]>("GET", "/api/evaluators" + (experimentId ? `?experiment=${enc(experimentId)}` : "")),

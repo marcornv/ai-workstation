@@ -221,6 +221,13 @@ export function EvaluatorForm({ value, onSave, onCancel }: Props) {
           <label htmlFor="ev-rubric">{t("Rubrica do juiz", "Judge rubric")}</label>
           <textarea id="ev-rubric" className="inp" rows={6} value={ev.rubric} onChange={(e) => set({ rubric: e.target.value })} />
           <span className="hint">{t("O juiz responde com uma nota de 0 a 1 e um motivo curto. A resposta esperada é enviada junto, se houver.", "The judge answers with a score from 0 to 1 and a short reason. The expected answer is sent along, if there is one.")}</span>
+          <label className="tgl" style={{ marginTop: 8 }}>
+            <input type="checkbox" checked={!!ev.send_images} onChange={() => set({ send_images: !ev.send_images })} />
+            {t(
+              "Enviar também as imagens do input ao juiz (só para modelos com visão, ex.: GPT-4o, Claude, Gemini, gemma3)",
+              "Also send the input images to the judge (vision models only, e.g. GPT-4o, Claude, Gemini, gemma3)",
+            )}
+          </label>
         </div>
       )}
 

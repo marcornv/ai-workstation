@@ -89,3 +89,27 @@ func TestSummarize(t *testing.T) {
 		t.Fatalf("unexpected summary: %+v", s)
 	}
 }
+
+func TestSetJSONLColumn(t *testing.T) {
+	in := []byte("{\"imagem\":\"images/a/1.png\",\"n\":1}\n\n{\"imagem\":\"images/a/2.png\",\"rotulo\":\"old\"}\n")
+	out, err := setJSONLColumn(in, "rotulo", []string{"cat", "dog"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ds, err := parseJSONL(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ds.Rows) != 2 || ds.Rows[0]["rotulo"] != "cat" || ds.Rows[1]["rotulo"] != "dog" {
+		t.Fatalf("labels not set: %+v", ds.Rows)
+	}
+	if ds.Rows[0]["n"] != "1" || ds.Rows[1]["imagem"] != "images/a/2.png" {
+		t.Fatalf("other fields changed: %+v", ds.Rows)
+	}
+	if _, err := setJSONLColumn(in, "rotulo", []string{"only one"}); err == nil {
+		t.Fatal("expected an error when values and rows don't match")
+	}
+	if _, err := setJSONLColumn(in, "rotulo", []string{"a", "b", "c"}); err == nil {
+		t.Fatal("expected an error with more values than rows")
+	}
+}

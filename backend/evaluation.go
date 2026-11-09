@@ -9,6 +9,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log"
@@ -368,6 +369,21 @@ func callPythonEvaluator(cfg Config, ev Evaluator, item evalItem, score Score) S
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
+	// An LLM judge with "send images" also sees the input's images. Go loads
+	// them (paths inside data/ or links, with the same checks as experiments)
+	// and Python attaches them to the judge's message.
+	if ev.Kind == "llm_judge" && ev.SendImages && len(item.Images) > 0 {
+		images := []map[string]string{}
+		for _, ref := range item.Images {
+			img, err := loadImage(ctx, cfg, ref)
+			if err != nil {
+				score.Error = err.Error()
+				return score
+			}
+			images = append(images, map[string]string{"media_type": img.MediaType, "data": base64.StdEncoding.EncodeToString(img.Data)})
+		}
+		body["images"] = images
+	}
 	if err := postJSON(ctx, cfg.Server.EvaluatorURL+"/evaluate", nil, body, &out); err != nil {
 		score.Error = err.Error()
 		return score

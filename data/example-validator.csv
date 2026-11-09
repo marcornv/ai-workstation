@@ -1,0 +1,11 @@
+question,answer,expected_answer,correct
+What is the capital of France?,The capital of France is Paris.,Paris,yes
+What is the capital of France?,The capital of France is Lyon.,Paris,no
+In what year did humans first land on the Moon?,In 1969.,1969,yes
+In what year did humans first land on the Moon?,The first Moon landing was in 1972.,1969,no
+What is the largest planet in the Solar System?,Jupiter is the largest planet in the Solar System.,Jupiter,yes
+What is the largest planet in the Solar System?,The largest planet is Saturn.,Jupiter,no
+How many sides does a hexagon have?,A hexagon has six sides.,6,yes
+How many sides does a hexagon have?,It has eight sides.,6,no
+What is the chemical formula for water?,H2O.,H2O,yes
+What is the chemical formula for water?,The formula for water is CO2.,H2O,no
